@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+	<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Lobster" />
+	<meta charset="ISO-8859-1">
+	<!-- Prevent caching to prevent session variable loss -->
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="cache-control" content="no-store, no-cache, must-revalidate" />
+	<meta http-equiv="expires" content="0" />
+	<meta http-equiv="pragma" content="no-cache" />
+	<script async defer
+		src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC3YPnlairVd65ZaPvPCbxW_xWPgyHRbgI&callback=initMap"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+	<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+	<style>
+		body {
+			font-family: Open-Sans, sans-serif;
+			;
+			color: gray;
+			font-size: 15px;
+			justify-content: space-around;
+			margin: 4%;
+		}
+
+		#header {
+			display: flex;
+			vertical-align: middle;
+			justify-content: space-between;
+			width: 100%;
+			padding: 10px;
+			box-sizing: border-box;
+		}
+
+		#logo {
+			width: 45%;
+		}
+
+		#menu {
+			display: flex;
+			gap: 20px;
+			text-align: right;
+			width: 45%;
+			justify-content: flex-end;
+		}
+
+		#menu a {
+			text-decoration: none;
+			color: gray;
+			margin-right: 10px;
+		}
+
+		img {
+
+			height: auto;
+			border-radius: 30px;
+		}
+
+		.google-maps-button-field button {
+
+			padding: 10px;
+			width: 32vw;
+			/* Ensures it takes up the available space */
+			margin-right: 15px;
+			margin-top: 30px;
+			background-color: #4285F4;
+			/* Adjust the color as needed */
+			color: white;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+			font-family: 'Open Sans', sans-serif;
+			flex-grow: 0;
+			/* Do not allow the button to grow */
+			flex-shrink: 0;
+			/* Do not allow the button to shrink */
+			flex-basis: 200px;
+			/* Set a fixed width for the button */
+		}
+
+		#map-overlay {
+			display: none;
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0, 0, 0, 0.5);
+			z-index: 10;
+			/* Ensure it's on top of other elements */
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
+
+		#map-overlay-container {
+			height: 500px;
+			width: 743px;
+			/* Adjust width to match the screenshot */
+			max-width: 90%;
+			/* Add a max-width to maintain responsiveness */
+			background: #fff;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+			z-index: 11;
+			position: relative;
+			/* Add relative positioning */
+			margin: auto;
+			/* Center in the overlay */
+		}
+	</style>
+
+	<script>
+		window.allowFavoritesReservations = function (isAuthenticated) {
+			var favres = $('#favres');
+			// no, favres.empty(); // Clear existing favres items
+			// Add authenticated favres items
+			if (isAuthenticated) {
+				// Show if authenticated
+				document.getElementById('show2authenticated').style.display = 'block';
+			} else {
+				// Hide if non-authenticated 
+				document.getElementById('show2authenticated').style.display = 'none';
+			}
+		}
+
+		window.updateMenu = function (isAuthenticated) {
+			var menu = $('#menu');
+			menu.empty(); // Clear existing menu items
+
+			if (isAuthenticated) {
+				// Add authenticated menu items
+				menu.append('<a href="home.html">Home</a>');
+				menu.append('<a href="favorites.html">Favorites</a>');
+				menu.append('<a href="reservations.html">Reservations</a>');
+				menu.append('<a href="LoginServlet?logout=true">Logout</a>');
+			} else {
+				// Add non-authenticated menu items
+				menu.append('<a href="home.html">Home</a>');
+				menu.append('<a href="login.html" target="_top">Login/Sign Up</a>');
+			}
+		}
+
+		function checkAuthentication() {
+			$.ajax({
+				url: '/A4/LoginServlet',
+				method: 'GET',
+				followRedirects: true,
+				success: function (data) {
+					var idUser = data.idUser;
+					if (idUser && idUser > 0) {
+						// User authenticated
+						console.log("Authenticated " + idUser);
+						window.updateMenu(true)
+						window.allowFavoritesReservations(true)
+					} else {
+						// User not authenticated
+						console.log("Non-authenticated " + idUser);
+						window.updateMenu(false);
+						window.allowFavoritesReservations(false)
+					}
+				},
+				error: function (error) {
+					console.error('Error checking authentication:', error);
+				}
+			});
+		}
+
+		function doesFavoriteExist() {
+			$.ajax({
+				url: '/A4/FavoritesServlet',
+				method: 'GET',
+				data: {
+					idrestaurantyelp: idrestaurantyelp,
+					business: business,
+					checkDoesFavoriteExist: true,
+				},
+				followRedirects: true,
+				success: function (data) {
+					var doesFavoriteExist = data;
+					if (doesFavoriteExist == "1") {
+						console.log("Exists " + doesFavoriteExist)
+						// Show remove button
+						$('#removeFavoriteForm').show();
+						$('#addFavoritesForm').hide();
+					} else {
+						console.log("Doesn't Exist " + doesFavoriteExist);
+						// Show add button
+						$('#addFavoritesForm').show();
+						$('#removeFavoriteForm').hide();
+					}
+				},
+				error: function (error) {
+					console.error('Error checking authentication:', error);
+				}
+			});
+		}
+
+		// Call checkAuthentication when needed (e.g., after a redirect)
+		$(document).ready(function () {
+			checkAuthentication();
+			doesFavoriteExist();
+		});
+	</script>
+</head>
+
+
+
+<body onload="setFocus()">
+
+	<div id="header">
+		<div id="logo">
+			<a href="home.html"><span style="color:firebrick;font-family: 'Lobster';font-size: 40px;">
+					JoesTable!</span></a>
+		</div>
+		<div id="menu">
+			<!-- Added dynamically -->
+		</div>
+	</div>
+	<hr color="LightGray">
+	</hr>
+	<br><br>
+	<div id="search">
+		<form name="RestaurantSearchForm" method="post" action="/A4/RestaurantSearchServlet">
+			<div style='overflow: auto;'>
+				<div style="float:left;">
+					<div>
+						<input type="text" id="restaurantName" placeholder="Restaurant Name" name="restaurantName"
+							style='width:50vw'>
+						<input type="submit" value="Q" style='width:7vw; background-color:FireBrick; color:white'>
+						<i class="fa-solid fa-pen-fancy"></i>
+					</div>
+				</div>
+
+				<!-- yelp api expects best_match, rating, review_count, or distance. -->
+				<div style="float:right;">
+					<div style="float:left; margin-right: 20px;">
+						<input type="radio" id="bestMatch" name="sort" value="best_match" checked>
+						<label for="bestMatch">Best Match</label><br>
+						<input type="radio" id="rating" name="sort" value="rating">
+						<label for="rating">Rating</label><br>
+					</div>
+					<div style="float:right;">
+						<input type="radio" id="reviewCount" name="sort" value="review_count">
+						<label for="reviewCount">Review Count</label><br>
+						<input type="radio" id="distance" name="sort" value="distance">
+						<label for="distance">Distance</label>
+					</div>
+				</div>
+			</div>
+			<div style="display: flex; gap: 10px; margin-top: 10px;">
+				<input type="text" id="latitude" placeholder="Latitude" name="latitude" style="flex: 1;"
+					value="">
+				<input type="text" id="longitude" placeholder="Longitude" name="longitude" style="flex: 1;"
+					value="">
+				<input type="button" id="mapButton" value="Google Maps (Drop a pin!)"
+					style="flex: 1; background-color: DodgerBlue; color: white;">
+			</div>
+
+		</form>
+	</div>
+
+	<div id="overlay"
+		style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);"></div>
+	<div id="map-overlay"
+		style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+		<div id="map-overlay-container" style="height: 500px; width: 743px; max-width: 90%; background: #fff;"></div>
+	</div>
+
+
+
+	<div id="restaurantInfo">
+		<!-- Restaurant information will be dynamically inserted here -->
+	</div>
+
+
+
+	<br><br><br><br>
+
+	<div id="show2authenticated">
+		<form name="removeFavoriteForm" id="removeFavoriteForm" method="post" action="/A4/FavoritesServlet">
+			<input type="hidden" name="idrestaurantyelp2removeFavorite" id="idrestaurantyelp2removeFavorite" value="">
+			<input type="hidden" name="business2removeFavorite" id="business2removeFavorite" value="">
+			<input type="submit" name="addOrRemoveFavoritesButton" id="removeFavorites" value="Remove from Favorites"
+				style='width:96vw; background-color:gold; color:gray'>
+		</form>
+		<form name="favoriteForm" id="addFavoritesForm" method="post" action="/A4/FavoritesServlet">
+			<input type="hidden" name="idrestaurantyelp" id="idrestaurantyelp" value="">
+			<input type="hidden" name="business" id="business" value="">
+			<input type="submit" name="addOrRemoveFavoritesButton" id="addFavorites" value="Add to Favorites" ;
+				style='width:96vw; background-color:gold; color:gray'>
+		</form>
+
+		<br><br>
+
+		<input type="submit" id="addReservation" value="Add Reservation"
+			style='width:96vw; background-color:FireBrick; color:white' onclick="toggleReservationDiv()">
+
+		<br><br>
+
+		<div id="reservationDiv" style="display: none; font: Opens Sans, sans-serif">
+			<form name="reservationForm" method="post" action="/A4/ReservationsServlet"
+				onsubmit="return validateReservation(event)">
+				<input type="hidden" name="idrestaurantyelp2reservation" id="idrestaurantyelp2reservation" value="">
+				<input type="hidden" name="business2reservation" id="business2reservation" value="">
+				<input type="date" id="reservationDate" placeholder="Date" name="reservationDate"
+					style="width:40vw; font: Opens Sans, sans-serif">
+				<p class="error dateError"></p>
+				<input type="time" id="reservationTime" placeholder="Time" name="reservationTime" style='width:40vw'
+					font="Opens Sans, sans-serif"><br><br>
+				<textarea rows="5" cols="80" id="reservationNotes" name="reservationNotes"
+					style="width:auto; font: Opens Sans, sans-serif"
+					onfocus="if(this.value==='Reservation Notes') this.value='';"
+					onblur="if(this.value==='Reservation Notes') this.value='';">Reservation Notes</textarea>
+				<input type="submit" value="Submit Reservation"
+					style='width:96vw; background-color:FireBrick; color:white; font: Opens Sans, sans-serif'>
+			</form>
+		</div>
+
+		<br><br><br><br>
+		<br><br><br><br>
+		<br><br><br><br>
+
+		<br>
+	</div>
+	</div>
+	<br>
+	<br>
+
+	<script>
+		function validateReservation(event) {
+			var dateInput = document.getElementById("reservationDate").value;
+			var timeInput = document.getElementById("reservationTime").value;
+
+			// Clear previous error messages
+			document.querySelector('.dateError').innerHTML = '';
+
+			// Validate date
+			if (!dateInput) {
+				document.querySelector('.dateError').innerHTML = 'Date cannot be empty';
+				event.preventDefault();
+				alert("Date cannot be empty");
+				return false;
+			}
+
+			var currentDate = new Date();
+			var selectedDate = new dateInput;
+
+			if (selectedDate < currentDate) {
+				document.querySelector('.dateError').innerHTML = 'Please select a date in the future';
+				document.querySelector(".dateError").style.display = "block";
+				event.preventDefault();
+				alert("Please select a date in the future" + "DateInput: " + dateInput + " Current Date: " + currentDate);
+				return false;
+			}
+
+			// Validate time
+			if (!timeInput) {
+				document.querySelector('.dateError').innerHTML = 'Time cannot be empty';
+				document.querySelector(".dateError").style.display = "block";
+				event.preventDefault();
+				alert("Please enter a time");
+				return false;
+			}
+
+			// If all validations pass, the form is valid
+			return true;
+		}
+
+		// Get idrestaurantyelp and business from URL
+		var idrestaurantyelp = getParameterByName('idrestaurantyelp');
+		var businessJson = getParameterByName('business');
+		var business = JSON.parse(businessJson);
+
+		//console.log('idrestaurantyelp:', idrestaurantyelp);
+		console.log('businessjson:', JSON.stringify(business));
+		console.log('business:', getParameterByName('business'));
+
+
+		// Set idrestaurantyelp and business in the form
+		document.getElementById('idrestaurantyelp').value = idrestaurantyelp;
+		document.getElementById('business').value = JSON.stringify(business);
+		document.getElementById('idrestaurantyelp2removeFavorite').value = idrestaurantyelp;
+		document.getElementById('business2removeFavorite').value = JSON.stringify(business);
+		document.getElementById('idrestaurantyelp2reservation').value = idrestaurantyelp;
+		document.getElementById('business2reservation').value = JSON.stringify(business);
+
+		// alert('URL Parameters:\nidrestaurantyelp=' + idrestaurantyelp + '\nbusiness=' + JSON.stringify(business));
+
+
+
+		function addToFavorites() {
+			alert('Go to Add to Favorites');
+			var idrestaurantyelp = getParameterByName('idrestaurantyelp');
+			console.log('favorites - Yelp Restaurant ID:', idrestaurantyelp);
+			// Set the value dynamically
+			document.getElementById('idrestaurantyelp').value = idrestaurantyelp;
+
+			// Set the 'business' value in the hidden input field
+			document.getElementById('business').value = JSON.stringify(business);
+
+			// Create a new XMLHttpRequest object
+			var xhr = new XMLHttpRequest();
+
+			// TODO rethink why pass parameter in url
+			xhr.open('GET', '/A4/FavoritesServlet?idrestaurantyelp=' + idrestaurantyelp, true);
+
+			// Send the request over the network
+			xhr.send();
+
+			// This will be called after the response is received
+			xhr.onload = function () {
+				if (xhr.status != 200) {
+					// analyze response
+					alert('Error ' + xhr.status + ': ' + xhr.statusText);
+				} else {
+					// Update the content on the page based on the server's response
+					var response = xhr.responseText;
+					alert('Server response: ' + response);
+				}
+			};
+			document.favoriteForm.submit();
+		}
+
+
+		function addToReservations() {
+			var idrestaurantyelp = getParameterByName('idrestaurantyelp');
+			//alert('reserv Yelp Restaurant ID:', idrestaurantyelp);
+			// Set the value dynamically
+			document.getElementById('idrestaurantyelp').value = idrestaurantyelp;
+
+			// Set the 'business' value in the hidden input field
+			document.getElementById('business').value = JSON.stringify(business);
+
+			// Log the values for debugging
+			//console.log('idrestaurantyelp:', document.getElementById('idrestaurantyelp').value);
+			//console.log('business:', document.getElementById('business').value);
+			//alert('idrestaurantyelp: ' + idrestaurantyelp + '\nbusiness: ' + JSON.stringify(business));
+			//console.log('idrestaurantyelp:', idrestaurantyelp);
+			//console.log('business:', JSON.stringify(business));
+
+			// Create a new XMLHttpRequest object
+			var xhr = new XMLHttpRequest();
+
+			// TODO rethink why pass parameter in url
+			xhr.open('POST', '/A4/ReservationsServlet?idrestaurantyelp=' + idrestaurantyelp, true);
+
+			// Send the request over the network
+			xhr.send();
+
+			// Called after the response is received
+			xhr.onload = function () {
+				if (xhr.status != 200) {
+					// analyze response
+					alert('Error ' + xhr.status + ': ' + xhr.statusText);
+				} else {
+					var response = xhr.responseText;
+					alert('Server response: ' + response);
+				}
+			};
+			document.reservationForm.submit();
+		}
+
+		// Function to get URL parameters by name
+		function getParameterByName(name, url) {
+			if (!url) url = window.location.href;
+			name = name.replace(/[\[\]]/g, '\\$&');
+			var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+				results = regex.exec(url);
+			if (!results) return null;
+			if (!results[2]) return '';
+			return decodeURIComponent(results[2].replace(/\+/g, ' '));
+		}
+
+		// Function to toggle the Reservation Form
+		function toggleReservationDiv() {
+			var reservationDiv = document.getElementById('reservationDiv');
+			reservationDiv.style.display = (reservationDiv.style.display === 'none') ? 'block' : 'none';
+		}
+
+		function getCuisineFromBusiness(business) {
+			var cuisineBuilder = [];
+
+			var categoriesArray = business.categories;
+
+			if (categoriesArray && categoriesArray.length > 0) {
+				for (var i = 0; i < categoriesArray.length; i++) {
+					var categoryObject = categoriesArray[i];
+					if (categoryObject.hasOwnProperty("title")) {
+						var title = categoryObject.title;
+						cuisineBuilder.push(title);
+						if (i < categoriesArray.length - 1) {
+							cuisineBuilder.push(", ");
+						}
+					}
+				}
+			} else {
+				return "N/A"; // Return "N/A" if no categories are available
+			}
+
+			var cuisine = cuisineBuilder.join("");
+			// console.log(cuisine);
+
+			return cuisine;
+		}
+
+		// Get idrestaurantyelp and business from URL
+		var idrestaurantyelp = getParameterByName('idrestaurantyelp');
+		var businessJson = getParameterByName('business');
+		var business = JSON.parse(businessJson);
+
+
+		// Parse JSON string to obtain restaurant details
+		var business = JSON.parse(decodeURIComponent(businessJson));
+
+
+		console.log('Restaurant ID:', idrestaurantyelp);
+		console.log('Business Details:', business);
+
+
+		// -----  RESTAURANT INFO -----
+
+		var restaurantInfoDiv = document.getElementById('restaurantInfo');
+
+		// Create an h2 element for the business name
+		var htmlResponse = $("<h2>").text(business.name);
+
+		// Create a div for the image and text
+		var imageAndTextDiv = $("<div>").css({
+			'overflow': 'auto',
+		});
+
+		// Create a div for the image on the left side
+		var detailsUrl = business.url + "' target='_blank'>";
+		var link = $("<a>").attr("href", detailsUrl);
+		var image = $("<img>").attr("src", business.image_url).attr("alt", "Restaurant Image").css({
+			'border-radius': '30px',
+			'width': '250px',
+			'height': 'auto',
+		});
+		htmlResponse.append("<hr style='border-top: dashed 1px; color: LightGray;' />");
+
+		// Append the image to the link
+		link.append(image);
+
+		// Append the link (containing the image) to the left side of imageAndTextDiv
+		imageAndTextDiv.append(link);
+
+		// Create a div for the text on the right side
+		var textDiv = $("<div>").css({
+			'float': 'right',
+			'width': '70%',
+			'overflow': 'hidden',
+		});
+
+		// Append text content to textDiv
+		textDiv.append("<p>Address: " + (business.location && business.location.display_address ? business.location.display_address.join(", ") : 'N/A') + "</p>");
+		textDiv.append("<p>Phone: " + (business.phone ? business.phone : 'N/A') + "</p>");
+		textDiv.append("<p>Cuisine: " + getCuisineFromBusiness(business) + "</p>");
+		textDiv.append("<p>Price: " + (business.price ? business.price : 'N/A') + "</p>");
+		textDiv.append("<p>Rating: " + business.rating + "</p>");
+
+		// Append textDiv to the right side of imageAndTextDiv
+		imageAndTextDiv.append(textDiv);
+
+		// Append h2 and imageAndTextDiv as siblings
+		restaurantInfoDiv.appendChild(htmlResponse[0]); // Use [0] to get the raw DOM element
+		restaurantInfoDiv.appendChild(imageAndTextDiv[0]); // Use [0] to get the raw DOM element
+
+
+
+
+		// -----  DATE AND TIME INFO -----
+
+		var today = new Date();
+
+		// Set the date input value to today
+		document.getElementById('reservationDate').value = formatDate(today);
+
+		// Calculate three hours from now
+		var threeHoursFromNow = new Date(today);
+		threeHoursFromNow.setHours(today.getHours() + 3);
+
+		// Set the time input value to three hours from now
+		document.getElementById('reservationTime').value = formatTime(threeHoursFromNow);
+
+		// Function to format date as YYYY-MM-DD
+		function formatDate(date) {
+			var yyyy = date.getFullYear();
+			var mm = String(date.getMonth() + 1).padStart(2, '0');
+			var dd = String(date.getDate()).padStart(2, '0');
+			return `${yyyy}-${mm}-${dd}`;
+		}
+
+		// Function to format time as HH:MM
+		function formatTime(date) {
+			var hh = String(date.getHours()).padStart(2, '0');
+			var mm = String(date.getMinutes()).padStart(2, '0');
+			return `${hh}:${mm}`;
+		}
+
+		function setFocus() {
+			// Get the element by its ID
+			var element = document.getElementById("addReservation");
+
+			// Set focus to the element
+			if (element) {
+				element.focus();
+			}
+		}
+
+		// Assuming the Google Maps API is correctly included and the API key is valid
+		const mapButton = document.getElementById('google-maps-button');
+		const overlay = document.getElementById('overlay');
+		const mapOverlay = document.getElementById('map-overlay');
+		const mapOverlayContainer = document.getElementById('map-overlay-container');
+		let map;
+		let marker;
+
+		// Function to initialize the map within the overlay
+		function initMap() {
+			mapOverlayContainer.innerHTML = ''; // Clear any existing map
+			const mapElement = document.createElement('div');
+			mapElement.style.height = '100%'; // Set the map height
+			mapOverlayContainer.appendChild(mapElement);
+			map = new google.maps.Map(mapElement, {
+				center: {lat: 34.0522, lng: -118.2437}, // Default center on Los Angeles
+				zoom: 8
+			});
+
+			// Add click listener to place a marker and populate the fields
+			map.addListener('click', function (e) {
+				placeMarker(e.latLng);
+				document.getElementById('latitude').value = e.latLng.lat().toFixed(6);
+				document.getElementById('longitude').value = e.latLng.lng().toFixed(6);
+			});
+
+			// Add click listener to close the overlay when clicking outside the map
+			mapOverlay.addEventListener('click', function (event) {
+				if (event.target === mapOverlay) {
+					closeOverlay();
+				}
+			});
+		}
+
+		// Function to place a marker on the map
+		function placeMarker(location) {
+			if (marker) {
+				marker.setPosition(location);
+			} else {
+				marker = new google.maps.Marker({
+					position: location,
+					map: map
+				});
+			}
+			map.panTo(location);
+		}
+
+		// Function to close the overlay
+		function closeOverlay() {
+			overlay.style.display = 'none';
+			mapOverlay.style.display = 'none';
+		}
+
+
+		document.addEventListener('DOMContentLoaded', function () {
+			const mapButton = document.getElementById('mapButton');
+			const overlay = document.getElementById('overlay');
+			const mapOverlay = document.getElementById('map-overlay');
+			const mapOverlayContainer = document.getElementById('map-overlay-container');
+
+			mapButton.addEventListener('click', function () {
+				overlay.style.display = 'flex';
+				mapOverlay.style.display = 'flex';
+				initMap();
+			});
+
+			// Back button handling to prevent session variable loss
+			window.onpageshow = function (event) {
+				if (event.persisted) {
+					window.location.reload();
+				}
+			};
+
+			// Get the element by its ID
+			var element = document.getElementById("addReservation");
+
+			// Set focus to the element
+			if (element) {
+				element.focus();
+			}
+		});
+
+
+
+		function test() {
+			//login to get to favorites page
+			// tested non-authenticated favorites button and it doesn't show any of the 
+		}
+	</script>
+
+</body>
+
+</html>

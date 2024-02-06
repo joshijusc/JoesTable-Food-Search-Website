@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+	<link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Lobster" />
+	<!-- Prevent caching to prevent session variable loss -->
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script async defer
+		src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC3YPnlairVd65ZaPvPCbxW_xWPgyHRbgI&callback=initMap"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+	<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+
+
+	<meta http-equiv="cache-control" content="no-store, no-cache, must-revalidate" />
+	<meta http-equiv="expires" content="0" />
+	<meta http-equiv="pragma" content="no-cache" />
+
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<style>
+		body {
+			font-family: Open-Sans, sans-serif;
+			;
+			color: gray;
+			font-size: 15px;
+			justify-content: space-around;
+			margin: 4%;
+		}
+
+		#header {
+			display: flex;
+			vertical-align: middle;
+			justify-content: space-between;
+			width: 100%;
+			padding: 10px;
+			box-sizing: border-box;
+		}
+
+		#logo {
+			width: 45%;
+		}
+
+		#menu {
+			display: flex;
+			gap: 20px;
+			text-align: right;
+			width: 45%;
+			justify-content: flex-end;
+		}
+
+		#menu a {
+			text-decoration: none;
+			color: gray;
+			margin-right: 10px;
+		}
+
+		img {
+
+			height: auto;
+			border-radius: 30px;
+		}
+
+		.google-maps-button-field button {
+
+			padding: 10px;
+			width: 32vw;
+			margin-right: 15px;
+			margin-top: 30px;
+			background-color: #4285F4;
+			color: white;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+			font-family: 'Open Sans', sans-serif;
+			flex-grow: 0;
+			flex-shrink: 0;
+			flex-basis: 200px;
+		}
+
+		#map-overlay {
+			display: none;
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0, 0, 0, 0.5);
+			z-index: 10;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
+
+		#map-overlay-container {
+			height: 500px;
+			width: 743px;
+			max-width: 90%;
+			background: #fff;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+			z-index: 11;
+			position: relative;
+			margin: auto;
+		}
+	</style>
+
+	<script>
+		window.updateMenu = function updateMenu(isAuthenticated) {
+			var menu = $('#menu');
+			menu.empty(); // Clear existing menu items
+
+			if (isAuthenticated) {
+				// Add authenticated menu items
+				menu.append('<a href="home.html">Home</a>');
+				menu.append('<a href="favorites.html">Favorites</a>');
+				menu.append('<a href="reservations.html">Reservations</a>');
+				menu.append('<a href="LoginServlet?logout=true">Logout</a>');
+			} else {
+				// Add non-authenticated menu items
+				menu.append('<a href="home.html">Home</a>');
+				menu.append('<a href="login.html" target="_top">Login/Sign Up</a>');
+			}
+		}
+
+		function checkAuthentication() {
+			$.ajax({
+				url: '/A4/LoginServlet',
+				method: 'GET',
+				followRedirects: true,
+				success: function (data) {
+					var idUser = data.idUser;
+					if (idUser && idUser > 0) {
+						// User authenticated
+						console.log("Authenticated " + idUser);
+						window.updateMenu(true);
+					} else {
+						// User not authenticated
+						console.log("Non-authenticated " + idUser);
+						window.updateMenu(false);
+					}
+				},
+				error: function (error) {
+					console.error('Error checking authentication:', error);
+				}
+			});
+		}
+
+		function fetchUsername() {
+			$.ajax({
+				url: '/A4/LoginServlet',
+				method: 'GET',
+				//            data: { idUser: idUser },
+				success: function (data) {
+					var username = data.username;
+					if (username) {
+						// Update the #displayName div with the username
+						$('#displayName').text(username + "'s Favorites");
+
+					}
+				},
+				error: function (error) {
+					console.error('Error fetching username:', error);
+				}
+			});
+		}
+
+
+		$(document).ready(function () {
+			checkAuthentication();
+			fetchUsername();
+		});
+	</script>
+
+</head>
+
+<body>
+	<!-- Common header, navigation, etc. -->
+	<div id="header">
+		<div id="logo">
+			<a href="home.html"><span style="color:firebrick;font-family: 'Lobster';font-size: 40px;">
+					JoesTable!</span></a>
+		</div>
+		<div id="menu">
+			<!-- Added dynamically -->
+		</div>
+	</div>
+	<hr color="LightGray">
+	</hr>
+	<br><br>
+
+	<div id="search">
+		<form name="RestaurantSearchForm" method="post" action="/A4/RestaurantSearchServlet">
+			<div style='overflow: auto;'>
+				<div style="float:left;">
+					<div>
+						<input type="text" id="restaurantName" placeholder="Restaurant Name" name="restaurantName"
+							style='width:50vw'>
+						<input type="submit" value="Q" style='width:7vw; background-color:FireBrick; color:white'>
+						<i class="fa-solid fa-pen-fancy"></i>
+					</div>
+				</div>
+
+				<!-- yelp api expects best_match, rating, review_count, or distance. -->
+				<div style="float:right;">
+					<div style="float:left; margin-right: 20px;">
+						<input type="radio" id="bestMatch" name="sort" value="best_match" checked>
+						<label for="bestMatch">Best Match</label><br>
+						<input type="radio" id="rating" name="sort" value="rating">
+						<label for="rating">Rating</label><br>
+					</div>
+					<div style="float:right;">
+						<input type="radio" id="reviewCount" name="sort" value="review_count">
+						<label for="reviewCount">Review Count</label><br>
+						<input type="radio" id="distance" name="sort" value="distance">
+						<label for="distance">Distance</label>
+					</div>
+				</div>
+			</div>
+			<div style="display: flex; gap: 10px; margin-top: 10px;">
+				<input type="text" id="latitude" placeholder="Latitude" name="latitude" style="flex: 1;"
+					value="">
+				<input type="text" id="longitude" placeholder="Longitude" name="longitude" style="flex: 1;"
+					value="">
+				<input type="button" id="mapButton" value="Google Maps (Drop a pin!)"
+					style="flex: 1; background-color: DodgerBlue; color: white;">
+			</div>
+
+		</form>
+	</div>
+
+	<div id="overlay"
+		style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);"></div>
+	<div id="map-overlay"
+		style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+		<div id="map-overlay-container" style="height: 500px; width: 743px; max-width: 90%; background: #fff;"></div>
+	</div>
+	<br><br>
+	<div id="sortFavorites" style="float:right; margin-right: 20px;">
+		<label for="sortSelect">Sort By:</label>
+		<select id="sortSelect" style='background-color:FireBrick; color:white' name="sortBy">
+			<option value="recent">Most Recent</option>
+			<option value="leastRecent">Least Recent</option>
+			<option value="nameAZ">A-Z</option>
+			<option value="nameZA">Z-A</option>
+			<option value="ratingHigh">Highest Rating</option>
+			<option value="ratingLow">Lowest Rating</option>
+		</select>
+	</div>
+
+	<font size='6'>
+		<div id="displayName" style="float:left; margin-right: 20px;"></div>
+	</font>
+
+	<br><br>
+
+	<div id="restaurantInfo">
+		<!-- Restaurant information will be dynamically inserted here -->
+	</div>
+
+
+
+	<script>
+		// Prevent session variable loss by back button
+		window.onpageshow = function (event) {
+			if (event.persisted) {
+				window.location.reload();
+			}
+		};
+
+
+		function updateSortBy() {
+			// Get the selected value from the dropdown
+			var sortBy = $("#sortSelect").val();
+
+			// Log the selected value to the console for debugging
+			console.log("Selected Sort By: " + sortBy);
+
+			// Perform AJAX request to fetch and display favorite restaurants with the new sort order
+			$.ajax({
+				url: "/A4/FavoritesServlet",
+				method: "GET",
+				data: {
+					sortBy: sortBy
+				},
+				success: function (data) {
+					// Clear existing content in #restaurantInfo
+					$("#restaurantInfo").empty();
+
+					// Check if there are any favorite restaurants
+					if (data && data.length > 0) {
+						// Loop through the list of favorite restaurants and append them to #restaurantInfo
+						for (var i = 0; i < data.length; i++) {
+							var restaurant = data[i];
+
+							// Create a div for each restaurant
+							// Concatenate the image div
+							var htmlResponse = $("<div>").css({
+								'overflow': 'auto',
+								'margin': '20px',
+							});
+
+							var detailsUrl = 'details.html?idrestaurantyelp=' + restaurant.idrestaurantyelp + '&business=' + encodeURIComponent(restaurant.business);
+							var link = $("<a>").attr("href", detailsUrl);
+							var image = $("<img>").attr("src", restaurant.urlimage).attr("alt", "Restaurant Image").css({
+								'border-radius': '0px',
+								'width': '200px',
+								'height': 'auto',
+							});
+							htmlResponse.append("<hr style='border-top: dashed 1px; color: LightGray;' /> <br><br>");
+
+							// Append the image to the link
+							link.append(image);
+
+							// Append the link (containing the image) to the left side
+							htmlResponse.append(link);
+
+							// Create a div for the text on the right side
+							var textDiv = $("<div>").css({
+								'float': 'right',
+								'width': '70%',
+								'overflow': 'hidden',
+							});
+
+							textDiv.append("<p> <font size='5'>" + restaurant.name + "</font></p>");
+							textDiv.append("<p>" + restaurant.address + "</p>");
+
+							const url = new URL(restaurant.url);
+							// Construct a new URL without query parameters
+							const truncatedUrl = `${url.protocol}//${url.host}${url.pathname}`;
+							textDiv.append("<p>" + truncatedUrl + "</p>");
+
+
+							// Append the text div to the main div
+							htmlResponse.append(textDiv);
+
+							// Append the main div to the container or wherever you need it
+							$("#restaurantInfo").append(htmlResponse);
+						}
+					} else {
+						// If no favorite restaurants, display a message
+						$("#restaurantInfo").html("<p>No favorite restaurants found.</p>");
+					}
+				},
+				error: function () {
+					console.error("Error in AJAX request");
+				}
+			});
+		}
+
+		// Call the function when the page is ready
+		$(document).ready(function () {
+			// Fetch and display favorite restaurants on page load
+			// delete displayFavoriteRestaurants();
+			updateSortBy();
+
+			// Set up the change event for the sorting dropdown
+			$("#sortSelect").change(function () {
+				updateSortBy();
+			});
+			// Handle click event for the search button
+			$("#searchButton").on("click", function () {
+				// Get values from input fields
+				var restaurantName = $("#restaurantName").val();
+				var latitude = $("#latitude").val();
+				var longitude = $("#longitude").val();
+				var sort = $("input[name='SearchRestaurant']:checked").val();
+
+				// Perform AJAX request to fetch restaurant information
+				$.ajax({
+					url: "/A4/FavoritesServlet",
+					method: "POST",
+					data: {
+						restaurantName: restaurantName,
+						latitude: latitude,
+						longitude: longitude,
+						sort: sort
+					},
+					success: function (response) {
+						// Insert the fetched restaurant information into the #restaurantInfo div
+						$("#restaurantInfo").html(response);
+					},
+					error: function () {
+						console.error("Error in AJAX request");
+					}
+				});
+			});
+		});
+		// Function to submit the sort form
+		function submitSortForm() {
+			$("#sortForm").submit();
+		}
+
+
+		// Assuming the Google Maps API is correctly included and the API key is valid
+		const mapButton = document.getElementById('google-maps-button');
+		const overlay = document.getElementById('overlay');
+		const mapOverlay = document.getElementById('map-overlay');
+		const mapOverlayContainer = document.getElementById('map-overlay-container');
+		let map;
+		let marker;
+
+		// Function to initialize the map within the overlay
+		function initMap() {
+			mapOverlayContainer.innerHTML = ''; // Clear any existing map
+			const mapElement = document.createElement('div');
+			mapElement.style.height = '100%'; // Set the map height
+			mapOverlayContainer.appendChild(mapElement);
+			map = new google.maps.Map(mapElement, {
+				center: {lat: 34.0522, lng: -118.2437}, // Default center on Los Angeles
+				zoom: 8
+			});
+
+			// Add click listener to place a marker and populate the fields
+			map.addListener('click', function (e) {
+				placeMarker(e.latLng);
+				document.getElementById('latitude').value = e.latLng.lat().toFixed(6);
+				document.getElementById('longitude').value = e.latLng.lng().toFixed(6);
+			});
+
+			// Add click listener to close the overlay when clicking outside the map
+			mapOverlay.addEventListener('click', function (event) {
+				if (event.target === mapOverlay) {
+					closeOverlay();
+				}
+			});
+		}
+
+		// Function to place a marker on the map
+		function placeMarker(location) {
+			if (marker) {
+				marker.setPosition(location);
+			} else {
+				marker = new google.maps.Marker({
+					position: location,
+					map: map
+				});
+			}
+			map.panTo(location);
+		}
+
+		// Function to close the overlay
+		function closeOverlay() {
+			overlay.style.display = 'none';
+			mapOverlay.style.display = 'none';
+		}
+
+
+		document.addEventListener('DOMContentLoaded', function () {
+			const mapButton = document.getElementById('mapButton');
+			const overlay = document.getElementById('overlay');
+			const mapOverlay = document.getElementById('map-overlay');
+			const mapOverlayContainer = document.getElementById('map-overlay-container');
+
+			mapButton.addEventListener('click', function () {
+				overlay.style.display = 'flex';
+				mapOverlay.style.display = 'flex';
+				initMap();
+			});
+
+			// Back button handling to prevent session variable loss
+			window.onpageshow = function (event) {
+				if (event.persisted) {
+					window.location.reload();
+				}
+			};
+
+			// Get the element by its ID
+			var element = document.getElementById("restaurantName");
+
+			// Set focus to the element
+			if (element) {
+				element.focus();
+			}
+		});
+
+
+	</script>
+
+</body>
+
+</html>

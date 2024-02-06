@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+	<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Lobster" />
+	<meta charset="ISO-8859-1">
+	<!-- Prevent caching to prevent session variable loss -->
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="cache-control" content="no-store, no-cache, must-revalidate" />
+	<meta http-equiv="expires" content="0" />
+	<meta http-equiv="pragma" content="no-cache" />
+	<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+
+	<style>
+		body {
+			font-family: Open-Sans, sans-serif;
+			;
+			color: gray;
+			font-size: 15px;
+			justify-content: space-around;
+			margin: 3%;
+		}
+
+		#header {
+			display: flex;
+			justify-content: space-around;
+			width: 100%;
+			box-sizing: border-box;
+		}
+
+		#logo {
+			width: 45%;
+		}
+
+		#menu {
+			display: flex;
+			gap: 20px;
+			text-align: right;
+			width: 45%;
+			justify-content: flex-end;
+		}
+
+		#menu a {
+			text-decoration: none;
+			color: gray;
+			margin-right: 10px;
+		}
+
+		#content {
+			display: flex;
+			justify-content: space-around;
+			width: 100%;
+			padding: 10px;
+			box-sizing: border-box;
+			margin: auto;
+			margin-top: 20px;
+		}
+
+
+		img {
+			width: 100%;
+			height: auto;
+			border-radius: 30px;
+		}
+
+		#search {
+			display: flex;
+			gap: 20px;
+			justify-content: space-between;
+			margin-bottom: 20px;
+		}
+
+		#search form {
+			display: flex;
+			gap: 20px;
+		}
+
+		#search input {
+			width: 100%;
+		}
+
+		#search .radio-group {
+			display: flex;
+			flex-direction: column;
+		}
+
+		#search input[type="submit"] {
+			width: 32vw;
+			background-color: DodgerBlue;
+			color: white;
+			margin-top: 20px;
+		}
+	</style>
+
+
+</head>
+
+<body onload="setFocus()">
+
+	<div id="header">
+		<div id="logo">
+			<a href="home.html"><span style="color:firebrick;font-family: 'Lobster';font-size: 40px;">
+					JoesTable!</span></a>
+		</div>
+		<div id="menu">
+			<!-- Added dynamically -->
+		</div>
+	</div>
+	<hr color="LightGray">
+	</hr>
+	<br><br>
+	<div id="content">
+		<form name="loginForm" method="post" action="/A4/LoginServlet" onsubmit="return validateLogin(event)">
+			<div style="float:left;">
+				<h2> Login </h2><br>
+				<label for="username_login">Username:</label><br>
+				<input type="text" id="username_login" name="username" autocomplete="username"
+					style='width:40vw; margin-top: 5px; margin-bottom: 15px;'><br>
+				<p class="error username-login-error"></p>
+				<label for="password_login">Password:</label><br>
+				<input type="password" id="password_login" name="password" autocomplete="current-password"
+					style='width:40vw; margin-top: 5px; margin-bottom: 15px;'><br> <br>
+				<p class="error password-login-error"></p>
+				<input type="submit" id="signin" value="Sign in"
+					style='width:40vw; margin-top: 5px; margin-bottom: 15px; background-color:FireBrick; color:white'>
+				<p class="error login-error"></p>
+			</div>
+		</form>
+
+		<form name="signUpForm" method="post" action="/A4/SignUpServlet" onsubmit="return validateSignUp(event)">
+			<div style="float:right;">
+				<h2>Sign Up </h2><br>
+				<label for="email">Email:</label><br>
+				<input type="text" id="email" name="email" autocomplete="email"
+					style='width:40vw; margin-top: 5px; margin-bottom: 15px;'><br>
+				<p class="error email-error"></p>
+				<label for="username_signup">Username:</label><br>
+				<input type="text" id="username_signup" name="username" autocomplete="username"
+					style='width:40vw; margin-top: 5px; margin-bottom: 15px;'><br>
+				<p class="error username-error"></p>
+				<label for="password_signup">Password:</label><br>
+				<input type="password" id="password_signup" name="password" autocomplete="current-password"
+					style='width:40vw; margin-top: 5px; margin-bottom: 15px;'><br>
+				<p class="error password-error"></p>
+				<label for="confirmPassword_signup">Confirm Password:</label><br>
+				<input type="password" id="confirmPassword_signup" name="confirmPassword"
+					autocomplete="current-password" style='width:40vw; margin-top: 5px; margin-bottom: 15px;'>
+				<br>
+				<p class="error confirm-password-error"></p>
+				<input type="checkbox" id="TOS" name="TOS" style='margin-top: 5px; margin-bottom: 15px;'>
+				<label for="TOS">I have read and agree to all terms and conditions of JoesTable.</label>
+				<p class="error TOS-error"></p>
+				<br>
+				<input type="submit" value="Create Account"
+					style='width:40vw; margin-top: 5px; margin-bottom: 15px; background-color:FireBrick; color:white'>
+				<p class="error register-error"></p>
+			</div>
+		</form>
+	</div>
+
+	<script>
+		function validateSignUp(event) {
+			var emailInput = document.getElementById("email").value;
+			var usernameInput = document.getElementById("username_signup").value;
+			var passwordInput = document.getElementById("password_signup").value;
+			var confirmPasswordInput = document.getElementById("confirmPassword_signup").value;
+			var TOSInput = document.getElementById("TOS").checked;
+
+			// Clear previous error messages
+			document.querySelector('.email-error').innerHTML = '';
+			document.querySelector('.username-error').innerHTML = '';
+			document.querySelector('.password-error').innerHTML = '';
+			document.querySelector('.confirm-password-error').innerHTML = '';
+			document.querySelector('.TOS-error').innerHTML = '';
+
+			// Validate email
+			if (emailInput.trim() === "" || !emailInput.includes("@")
+				|| emailInput.split("@").length < 2) {
+				document.querySelector(".email-error").innerHTML = "Please enter a valid email";
+				document.querySelector(".email-error").style.display = "block";
+				event.preventDefault();
+				return false;
+			}
+
+			// Username validation
+			if (usernameInput.trim() === "") {
+				document.querySelector(".username-error").innerHTML = "Please enter a username";
+				document.querySelector(".username-error").style.display = "block";
+				event.preventDefault();
+				return false;
+			}
+
+			// Password validation
+			if (passwordInput.trim() === "") {
+				document.querySelector(".password-error").innerHTML = "Please enter a password";
+				document.querySelector(".password-error").style.display = "block";
+				event.preventDefault();
+				return false;
+			}
+
+			if (passwordInput !== confirmPasswordInput) {
+				document.querySelector(".confirm-password-error").innerHTML = "Passwords do not match";
+				document.querySelector(".confirm-password-error").style.display = "block";
+				event.preventDefault();
+				return false;
+			}
+
+			// TOS validation
+			if (!TOSInput) {
+				document.querySelector(".TOS-error").innerHTML = "Please accept TOS";
+				document.querySelector(".TOS-error").style.display = "block";
+				event.preventDefault();
+				return false;
+			}
+
+			// If all validations pass, the form is valid
+			return true;
+		}
+
+		function validateLogin(event) {
+			var usernameInput = document.getElementById("username_login").value;
+			var passwordInput = document.getElementById("password_login").value;
+			document.querySelector('.username-login-error').innerHTML = '';
+			document.querySelector('.password-login-error').innerHTML = '';
+
+			// Validate username
+			if (usernameInput.trim() === "") {
+				document.querySelector(".username-login-error").innerHTML = "Please enter a username";
+				document.querySelector(".username-login-error").style.display = "block";
+				event.preventDefault();
+				return false;
+			}
+
+			// Validate password
+			if (passwordInput.trim() === "") {
+				document.querySelector(".password-login-error").innerHTML = "Please enter a password";
+				document.querySelector(".password-login-error").style.display = "block";
+				event.preventDefault();
+				return false;
+			}
+
+			// Validate username and password on the server
+			//const response = await fetch(`/A4/LoginServlet?username=${encodeURIComponent(usernameInput)}&password=${encodeURIComponent(passwordInput)}`);
+			//const result = await response.json();
+			//console.log(result.idUser);
+			
+			//if (result.idUser > 0) {
+				// Successful login
+				//return true;
+			//} else {
+				// Display login error
+				//document.querySelector(".login-error").innerHTML = "Invalid username or password";
+				//document.querySelector(".login-error").style.display = "block";
+				//event.preventDefault();
+				//return false;
+			//}
+		}
+
+
+		// Back button handling to prevent session variable loss
+		window.onpageshow = function (event) {
+			if (event.persisted) {
+				window.location.reload();
+			}
+		};
+
+		function setFocus() {
+			// Get the element by its ID
+			var element = document.getElementById("username_login");
+
+			// Set focus to the element
+			if (element) {
+				element.focus();
+			}
+		}
+	</script>
+
+	<script>
+		window.updateMenu = function updateMenu(isAuthenticated) {
+			var menu = $('#menu');
+			menu.empty(); // Clear existing menu items
+
+			if (isAuthenticated) {
+				// Add authenticated menu items
+				menu.append('<a href="home.html">Home</a>');
+				menu.append('<a href="favorites.html">Favorites</a>');
+				menu.append('<a href="reservations.html">Reservations</a>');
+				menu.append('<a href="logout.html">Logout</a>');
+			} else {
+				// Add non-authenticated menu items
+				menu.append('<a href="home.html">Home</a>');
+				menu.append('<a href="login.html" target="_top">Login/Sign Up</a>');
+			}
+		}
+
+		function checkAuthentication() {
+			$.ajax({
+				url: '/A4/LoginServlet',
+				method: 'GET',
+				followRedirects: true,
+				success: function (data) {
+					var idUser = data.idUser;
+					if (idUser && idUser > 0) {
+						// User authenticated
+						console.log("Authenticated " + idUser);
+						window.updateMenu(true);
+					} else {
+						// User not authenticated
+						console.log("Non-authenticated " + idUser);
+						window.updateMenu(false);
+					}
+				},
+				error: function (error) {
+					console.error('Error checking authentication:', error);
+				}
+			});
+		}
+
+		// Call checkAuthentication when needed (e.g., after a redirect)
+		$(document).ready(function () {
+			checkAuthentication();
+		});
+	</script>
+
+
+</body>
+
+</html>
