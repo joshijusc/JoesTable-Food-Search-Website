@@ -97,10 +97,6 @@ public class RestaurantSearchServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 
-		// TODO different menu for authenticated users versus unauthenticated users
-		// if (idUser > 0) { // For authenticated users
-		// }
-
 		// read form fields
 		restaurantName = request.getParameter("restaurantName");
 		restaurantName = URLEncoder.encode((restaurantName), "UTF-8");
@@ -124,7 +120,6 @@ public class RestaurantSearchServlet extends HttpServlet {
 	       // Check if the API results are already in the session
         List<JSONObject> businesses = (List<JSONObject>) session.getAttribute(BUSINESSES);
 
-//        if (businesses == null) {
             try {
                 businesses = getRestaurantFromYelpAPI(latitudeString, longitudeString, restaurantName, sort);
         
@@ -162,14 +157,10 @@ public class RestaurantSearchServlet extends HttpServlet {
 
                 // Set the JSON array as a string in the request attribute
                 request.setAttribute("BUSINESSESJSON", businessesArray.toString());
-//                System.out.println(businesses.toString());
             } catch (ParseException e) {
                 e.printStackTrace();
             }
-//        }
         
-//        RequestDispatcher dispatcher = request.getRequestDispatcher("businesses.html");
-//        dispatcher.forward(request, response);
 
         response.sendRedirect("businesses.html");
     }
@@ -179,14 +170,13 @@ public class RestaurantSearchServlet extends HttpServlet {
 			String sort) throws ParseException {
 		List<JSONObject> apiResults = new ArrayList<>();
 		
-		
+		yelpAPIKey = ""; // ******************** INSERT API KEY HERE ***********************************
 		String apiURL = "https://api.yelp.com/v3/businesses/search?latitude=" + latitude + "&longitude=" + longitude
 				+ "&radius=10000" + "&term=" + searchTerm + "&sort_by=" + sort + "&limit=10";
-//		System.out.println("apiURL: " + apiURL);
 
 		HttpRequest request = HttpRequest.newBuilder().uri(URI.create(apiURL)).header("accept", "application/json")
 				.header("Authorization",
-						"Bearer sU1iJa2XZBBdZTTH1Qud9T9QCZ6kuIs8tfaa4AXfjvKENOS8CH9uMDfyPV9Irh08CU94MnwJnaKzar9Ij0zhLtO3MSbTTYRXyCVOOWXE3tjqp4VZG3awv5OBBpodZXYx")
+						"Bearer " + yelpAPIKey)
 				.method("GET", HttpRequest.BodyPublishers.noBody()).build();
 		HttpResponse<String> response = null;
 		try {
